@@ -34,6 +34,7 @@ using namespace std;
 #include <pcl/registration/icp.h>
 #include <pcl/registration/ndt.h>
 #include <pcl/console/time.h>   // TicToc
+#include <pcl/filters/voxel_grid.h>
 
 PointCloudT pclCloud;
 cc::Vehicle::Control control;
@@ -222,6 +223,12 @@ int main(){
 			
 			new_scan = true;
 			// TODO: (Filter scan using voxel filter)
+			cout<<"before filtering size ="<<scanCloud->points.size()<<endl;
+			pcl::VoxelGrid<pcl::PointCloud<PointT>> sor;
+			sor.setInputCloud (*scanCloud);
+			sor.setLeafSize (0.01f, 0.01f, 0.01f);
+			sor.filter (*cloudFiltered);
+			cout<<"after filtering size ="<<cloudFiltered->points.size()<<endl;
 
 			// TODO: Find pose transform by using ICP or NDT matching
 			//pose = ....
@@ -231,6 +238,8 @@ int main(){
 			viewer->removePointCloud("scan");
 			// TODO: Change `scanCloud` below to your transformed scan
 			renderPointCloud(viewer, scanCloud, "scan", Color(1,0,0) );
+			cout<<"scanCloud size="<<scanCloud->points.size()<<endl;
+			cout<<"mapCloud size="<<mapCloud->width<<endl;
 
 			viewer->removeAllShapes();
 			drawCar(pose, 1,  Color(0,1,0), 0.35, viewer);
