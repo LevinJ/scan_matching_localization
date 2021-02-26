@@ -224,22 +224,33 @@ int main(){
 			new_scan = true;
 			// TODO: (Filter scan using voxel filter)
 			cout<<"before filtering size ="<<scanCloud->points.size()<<endl;
-			pcl::VoxelGrid<pcl::PointCloud<PointT>> sor;
-			sor.setInputCloud (*scanCloud);
-			sor.setLeafSize (0.01f, 0.01f, 0.01f);
+			pcl::VoxelGrid<PointT> sor;
+			sor.setInputCloud (scanCloud);
+			sor.setLeafSize (0.05f, 0.05f, 0.05f);
 			sor.filter (*cloudFiltered);
 			cout<<"after filtering size ="<<cloudFiltered->points.size()<<endl;
+			cout<<"mapCloud size="<<mapCloud->width<<endl;
+
+			pcl::io::savePCDFileASCII ("cloudFiltered_pcd.pcd", *cloudFiltered);
 
 			// TODO: Find pose transform by using ICP or NDT matching
 			//pose = ....
+			pcl::IterativeClosestPoint<PointT, PointT> icp;
+			icp.setInputSource(cloudFiltered);
+			icp.setInputTarget(mapCloud);
 
+			pcl::PointCloud<pcl::PointXYZ> Final;
+			icp.align(Final);
+
+			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
+			icp.getFitnessScore() << std::endl;
+			std::cout << icp.getFinalTransformation() << std::endl;
 			// TODO: Transform scan so it aligns with ego's actual pose and render that scan
 
 			viewer->removePointCloud("scan");
 			// TODO: Change `scanCloud` below to your transformed scan
 			renderPointCloud(viewer, scanCloud, "scan", Color(1,0,0) );
-			cout<<"scanCloud size="<<scanCloud->points.size()<<endl;
-			cout<<"mapCloud size="<<mapCloud->width<<endl;
+
 
 			viewer->removeAllShapes();
 			drawCar(pose, 1,  Color(0,1,0), 0.35, viewer);
