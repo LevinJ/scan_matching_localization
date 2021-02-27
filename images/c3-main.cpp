@@ -230,57 +230,6 @@ int main(){
 		renderRay(viewer, Point(truePose.position.x+2*cos(theta), truePose.position.y+2*sin(theta),truePose.position.z),  Point(truePose.position.x+4*cos(stheta), truePose.position.y+4*sin(stheta),truePose.position.z), "steer", Color(0,1,0));
 
 
-		if(!new_scan){
-			std::cout << "process scan"<<std::endl;
-
-			// TODO: (Filter scan using voxel filter)
-	//			cout<<"before filtering size ="<<scanCloud->points.size()<<endl;
-			pcl::VoxelGrid<PointT> sor;
-			sor.setInputCloud (scanCloud);
-			sor.setLeafSize (0.05f, 0.05f, 0.05f);
-			sor.filter (*cloudFiltered);
-	//			cout<<"after filtering size ="<<cloudFiltered->points.size()<<endl;
-	//			cout<<"mapCloud size="<<mapCloud->width<<endl;
-
-			pcl::io::savePCDFileASCII ("cloudFiltered_pcd.pcd", *cloudFiltered);
-
-			// TODO: Find pose transform by using ICP or NDT matching
-			//pose = ....
-			pcl::IterativeClosestPoint<PointT, PointT> icp;
-			icp.setInputSource(cloudFiltered);
-			icp.setInputTarget(mapCloud);
-
-			pcl::PointCloud<pcl::PointXYZ> Final;
-			Eigen::Matrix4f guess;
-	//			guess = convert2Eigen(pose_lidarRef);
-	//			guess = convert2Eigen(pose);
-			guess = convert2Eigen(truePose);
-	//			std::cout<<"guess value: "<<guess<<std::endl;
-			icp.align(Final, guess);
-
-	//			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
-	//			icp.getFitnessScore() << std::endl;
-			Matrix4f transformation_matrix = icp.getFinalTransformation();
-	//			std::cout << transformation_matrix << std::endl;
-
-	//			pose = getPose(transformation_matrix.cast <double>());
-			pose = truePose;
-			// TODO: Transform scan so it aligns with ego's actual pose and render that scan
-			//pcl::transformPointCloud (*scanCloud, *scanCloud, transformation_matrix);
-
-			pcl::transformPointCloud (*scanCloud, *scanCloud, convert2Eigen(pose));
-
-			viewer->removePointCloud("scan");
-			// TODO: Change `scanCloud` below to your transformed scan
-			renderPointCloud(viewer, scanCloud, "scan", Color(1,0,0) );
-
-
-			viewer->removeAllShapes();
-			drawCar(pose, 1,  Color(0,1,0), 0.35, viewer);
-
-			pclCloud.points.clear();
-		}
-
 		ControlState accuate(0, 0, 1);
 		if(cs.size() > 0){
 			accuate = cs.back();
@@ -311,12 +260,59 @@ int main(){
 				viewer->addText("Passed!", 200, 50, 32, 0.0, 1.0, 0.0, "eval",0);
 			}
 		}
-		new_scan = true;
-		std::this_thread::sleep_for(0.2s);
+
   		viewer->spinOnce ();
-
 		
+		if(!new_scan){
+			std::cout << "process scan"<<std::endl;
+			new_scan = true;
+			// TODO: (Filter scan using voxel filter)
+//			cout<<"before filtering size ="<<scanCloud->points.size()<<endl;
+			pcl::VoxelGrid<PointT> sor;
+			sor.setInputCloud (scanCloud);
+			sor.setLeafSize (0.05f, 0.05f, 0.05f);
+			sor.filter (*cloudFiltered);
+//			cout<<"after filtering size ="<<cloudFiltered->points.size()<<endl;
+//			cout<<"mapCloud size="<<mapCloud->width<<endl;
 
+			pcl::io::savePCDFileASCII ("cloudFiltered_pcd.pcd", *cloudFiltered);
+
+			// TODO: Find pose transform by using ICP or NDT matching
+			//pose = ....
+			pcl::IterativeClosestPoint<PointT, PointT> icp;
+			icp.setInputSource(cloudFiltered);
+			icp.setInputTarget(mapCloud);
+
+			pcl::PointCloud<pcl::PointXYZ> Final;
+			Eigen::Matrix4f guess;
+//			guess = convert2Eigen(pose_lidarRef);
+//			guess = convert2Eigen(pose);
+			guess = convert2Eigen(truePose);
+//			std::cout<<"guess value: "<<guess<<std::endl;
+			icp.align(Final, guess);
+
+//			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
+//			icp.getFitnessScore() << std::endl;
+			Matrix4f transformation_matrix = icp.getFinalTransformation();
+//			std::cout << transformation_matrix << std::endl;
+
+//			pose = getPose(transformation_matrix.cast <double>());
+			pose = truePose;
+			// TODO: Transform scan so it aligns with ego's actual pose and render that scan
+			//pcl::transformPointCloud (*scanCloud, *scanCloud, transformation_matrix);
+
+			pcl::transformPointCloud (*scanCloud, *scanCloud, convert2Eigen(truePose));
+
+			viewer->removePointCloud("scan");
+			// TODO: Change `scanCloud` below to your transformed scan
+			renderPointCloud(viewer, scanCloud, "scan", Color(1,0,0) );
+
+
+			viewer->removeAllShapes();
+			drawCar(pose, 1,  Color(0,1,0), 0.35, viewer);
+
+			pclCloud.points.clear();
+		}
   	}
 	return 0;
 }
