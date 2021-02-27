@@ -188,7 +188,6 @@ int main(){
 	lidar->Listen([&new_scan, &lastScanTime, &scanCloud](auto data){
 
 		if(new_scan){
-			std::cout << "lidar callback"<<std::endl;
 			auto scan = boost::static_pointer_cast<csd::LidarMeasurement>(data);
 			for (auto detection : *scan){
 				if((detection.point.x*detection.point.x + detection.point.y*detection.point.y + detection.point.z*detection.point.z) > 8.0){ // Don't include points touching ego
@@ -199,6 +198,7 @@ int main(){
 				lastScanTime = std::chrono::system_clock::now();
 				*scanCloud = pclCloud;
 				new_scan = false;
+				std::cout << "lidar callback"<<std::endl;
 			}
 		}
 	});
@@ -221,6 +221,7 @@ int main(){
 		
 		viewer->removeShape("box0");
 		viewer->removeShape("boxFill0");
+		std::cout << "get ground truth pose"<<std::endl;
 		Pose truePose = Pose(Point(vehicle->GetTransform().location.x, vehicle->GetTransform().location.y, vehicle->GetTransform().location.z), Rotate(vehicle->GetTransform().rotation.yaw * pi/180, vehicle->GetTransform().rotation.pitch * pi/180, vehicle->GetTransform().rotation.roll * pi/180)) - poseRef;
 		drawCar(truePose, 0,  Color(1,0,0), 0.7, viewer);
 		double theta = truePose.rotation.yaw;
@@ -239,6 +240,7 @@ int main(){
 		}
 
 		double poseError = sqrt( (truePose.position.x - pose.position.x) * (truePose.position.x - pose.position.x) + (truePose.position.y - pose.position.y) * (truePose.position.y - pose.position.y) );
+		std::cout << "calculate error"<<std::endl;
 		if(poseError > maxError)
 			maxError = poseError;
 		double distDriven = sqrt( (truePose.position.x) * (truePose.position.x) + (truePose.position.y) * (truePose.position.y) );
