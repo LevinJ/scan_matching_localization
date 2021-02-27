@@ -188,6 +188,7 @@ int main(){
 	lidar->Listen([&new_scan, &lastScanTime, &scanCloud](auto data){
 
 		if(new_scan){
+			std::cout << "lidar callback"<<std::endl;
 			auto scan = boost::static_pointer_cast<csd::LidarMeasurement>(data);
 			for (auto detection : *scan){
 				if((detection.point.x*detection.point.x + detection.point.y*detection.point.y + detection.point.z*detection.point.z) > 8.0){ // Don't include points touching ego
@@ -209,6 +210,7 @@ int main(){
 	while (!viewer->wasStopped())
   	{
 		while(new_scan){
+			std::cout << "world tick"<<std::endl;
 			std::this_thread::sleep_for(0.1s);
 			world.Tick(1s);
 		}
@@ -260,7 +262,7 @@ int main(){
   		viewer->spinOnce ();
 		
 		if(!new_scan){
-			
+			std::cout << "process scan"<<std::endl;
 			new_scan = true;
 			// TODO: (Filter scan using voxel filter)
 //			cout<<"before filtering size ="<<scanCloud->points.size()<<endl;
@@ -282,18 +284,22 @@ int main(){
 			pcl::PointCloud<pcl::PointXYZ> Final;
 			Eigen::Matrix4f guess;
 //			guess = convert2Eigen(pose_lidarRef);
-			guess = convert2Eigen(pose);
-			std::cout<<"guess value: "<<guess<<std::endl;
+//			guess = convert2Eigen(pose);
+			guess = convert2Eigen(truePose);
+//			std::cout<<"guess value: "<<guess<<std::endl;
 			icp.align(Final, guess);
 
-			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
-			icp.getFitnessScore() << std::endl;
+//			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
+//			icp.getFitnessScore() << std::endl;
 			Matrix4f transformation_matrix = icp.getFinalTransformation();
-			std::cout << transformation_matrix << std::endl;
+//			std::cout << transformation_matrix << std::endl;
 
-			pose = getPose(transformation_matrix.cast <double>());
+//			pose = getPose(transformation_matrix.cast <double>());
+			pose = truePose;
 			// TODO: Transform scan so it aligns with ego's actual pose and render that scan
-//			pcl::transformPointCloud (*scanCloud, *scanCloud, transformation_matrix);
+			//pcl::transformPointCloud (*scanCloud, *scanCloud, transformation_matrix);
+
+			pcl::transformPointCloud (*scanCloud, *scanCloud, convert2Eigen(truePose));
 
 			viewer->removePointCloud("scan");
 			// TODO: Change `scanCloud` below to your transformed scan
