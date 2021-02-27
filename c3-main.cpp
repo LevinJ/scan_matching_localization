@@ -40,6 +40,45 @@ PointCloudT pclCloud;
 cc::Vehicle::Control control;
 std::chrono::time_point<std::chrono::system_clock> currentTime;
 vector<ControlState> cs;
+using namespace Eigen;
+Eigen::Matrix4f get_transformation(double x, double y, double z, double yaw, double pitch, double roll){
+
+	Quaterniond q;
+	q = AngleAxisd(roll, Vector3d::UnitX())
+		* AngleAxisd(pitch, Vector3d::UnitY())
+		* AngleAxisd(yaw, Vector3d::UnitZ());
+//	std::cout << "Quaternion" << std::endl << q.coeffs() << std::endl;
+	auto euler = q.toRotationMatrix().eulerAngles(0, 1, 2);
+//	std::cout << "Euler from quaternion in roll, pitch, yaw"<< std::endl << euler << std::endl;
+	Matrix3d r = q.toRotationMatrix();
+	Matrix4d res = Matrix4d::Identity();
+
+	res.block<3,3>(0,0) = r;
+	res(0,3) = x;
+	res(1,3) = y;
+	res(2,3) = z;
+
+	Eigen::Matrix4f res_f = res.cast <float> ();
+	return res_f;
+
+}
+
+Eigen::Matrix4f convert2Eigen(const Pose &pose){
+	double x;
+	double y;
+	double z;
+	double yaw,  pitch,  roll;
+
+	x = pose.position.x;
+	y = pose.position.y;
+	z = pose.position.z;
+
+	yaw = pose.rotation.yaw;
+	pitch = pose.rotation.pitch;
+	roll = pose.rotation.roll;
+
+	return get_transformation( x,  y,  z,  yaw,  pitch,  roll);
+}
 
 bool refresh_view = false;
 void keyboardEventOccurred(const pcl::visualization::KeyboardEvent &event, void* viewer)
@@ -164,6 +203,7 @@ int main(){
 	});
 	
 	Pose poseRef(Point(vehicle->GetTransform().location.x, vehicle->GetTransform().location.y, vehicle->GetTransform().location.z), Rotate(vehicle->GetTransform().rotation.yaw * pi/180, vehicle->GetTransform().rotation.pitch * pi/180, vehicle->GetTransform().rotation.roll * pi/180));
+	Pose pose_lidarRef(Point(lidar->GetTransform().location.x, lidar->GetTransform().location.y, lidar->GetTransform().location.z), Rotate(lidar->GetTransform().rotation.yaw * pi/180, lidar->GetTransform().rotation.pitch * pi/180, lidar->GetTransform().rotation.roll * pi/180));
 	double maxError = 0;
 
 	while (!viewer->wasStopped())
@@ -223,13 +263,13 @@ int main(){
 			
 			new_scan = true;
 			// TODO: (Filter scan using voxel filter)
-			cout<<"before filtering size ="<<scanCloud->points.size()<<endl;
+//			cout<<"before filtering size ="<<scanCloud->points.size()<<endl;
 			pcl::VoxelGrid<PointT> sor;
 			sor.setInputCloud (scanCloud);
 			sor.setLeafSize (0.05f, 0.05f, 0.05f);
 			sor.filter (*cloudFiltered);
-			cout<<"after filtering size ="<<cloudFiltered->points.size()<<endl;
-			cout<<"mapCloud size="<<mapCloud->width<<endl;
+//			cout<<"after filtering size ="<<cloudFiltered->points.size()<<endl;
+//			cout<<"mapCloud size="<<mapCloud->width<<endl;
 
 			pcl::io::savePCDFileASCII ("cloudFiltered_pcd.pcd", *cloudFiltered);
 
@@ -240,12 +280,20 @@ int main(){
 			icp.setInputTarget(mapCloud);
 
 			pcl::PointCloud<pcl::PointXYZ> Final;
-			icp.align(Final);
+			Eigen::Matrix4f guess;
+//			guess = convert2Eigen(pose_lidarRef);
+			guess = convert2Eigen(pose);
+			std::cout<<"guess value: "<<guess<<std::endl;
+			icp.align(Final, guess);
 
 			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
 			icp.getFitnessScore() << std::endl;
-			std::cout << icp.getFinalTransformation() << std::endl;
+			Matrix4f transformation_matrix = icp.getFinalTransformation();
+			std::cout << transformation_matrix << std::endl;
+
+			pose = getPose(transformation_matrix.cast <double>());
 			// TODO: Transform scan so it aligns with ego's actual pose and render that scan
+//			pcl::transformPointCloud (*scanCloud, *scanCloud, transformation_matrix);
 
 			viewer->removePointCloud("scan");
 			// TODO: Change `scanCloud` below to your transformed scan
