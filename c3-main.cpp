@@ -35,6 +35,7 @@ using namespace std;
 #include <pcl/registration/ndt.h>
 #include <pcl/console/time.h>   // TicToc
 #include <pcl/filters/voxel_grid.h>
+#include <sstream>
 
 PointCloudT pclCloud;
 cc::Vehicle::Control control;
@@ -78,6 +79,24 @@ Eigen::Matrix4f convert2Eigen(const Pose &pose){
 	roll = pose.rotation.roll;
 
 	return get_transformation( x,  y,  z,  yaw,  pitch,  roll);
+}
+
+std::string convert2String(const Pose &pose){
+	double x;
+	double y;
+	double z;
+	double yaw,  pitch,  roll;
+	std::stringstream ss;
+	x = pose.position.x;
+	y = pose.position.y;
+	z = pose.position.z;
+
+	yaw = pose.rotation.yaw;
+	pitch = pose.rotation.pitch;
+	roll = pose.rotation.roll;
+
+	ss<<"["<<x <<","<<y<<","<<z<<",,"<<yaw<<","<<pitch<<","<<roll<<"]";
+	return ss.str();
 }
 
 bool refresh_view = false;
@@ -221,7 +240,7 @@ int main(){
 		
 		viewer->removeShape("box0");
 		viewer->removeShape("boxFill0");
-		std::cout << "get ground truth pose"<<std::endl;
+//		std::cout << "get ground truth pose"<<std::endl;
 		Pose truePose = Pose(Point(vehicle->GetTransform().location.x, vehicle->GetTransform().location.y, vehicle->GetTransform().location.z), Rotate(vehicle->GetTransform().rotation.yaw * pi/180, vehicle->GetTransform().rotation.pitch * pi/180, vehicle->GetTransform().rotation.roll * pi/180)) - poseRef;
 		drawCar(truePose, 0,  Color(1,0,0), 0.7, viewer);
 		double theta = truePose.rotation.yaw;
@@ -231,7 +250,7 @@ int main(){
 
 
 		if(!new_scan){
-			std::cout << "process scan"<<std::endl;
+//			std::cout << "process scan"<<std::endl;
 
 			// TODO: (Filter scan using voxel filter)
 	//			cout<<"before filtering size ="<<scanCloud->points.size()<<endl;
@@ -253,10 +272,11 @@ int main(){
 			pcl::PointCloud<pcl::PointXYZ> Final;
 			Eigen::Matrix4f guess;
 	//			guess = convert2Eigen(pose_lidarRef);
-	//			guess = convert2Eigen(pose);
-			guess = convert2Eigen(truePose);
+				guess = convert2Eigen(pose);
+//			guess = convert2Eigen(truePose);
 	//			std::cout<<"guess value: "<<guess<<std::endl;
-			icp.align(Final, guess);
+				std::cout << "last pose = "<<convert2String(pose) <<", gt pose = "<<convert2String(truePose)<<std::endl;
+				icp.align(Final, guess);
 
 			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
 					icp.getFitnessScore() << std::endl;
