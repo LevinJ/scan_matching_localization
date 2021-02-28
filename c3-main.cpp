@@ -258,16 +258,14 @@ int main(){
 	//			std::cout<<"guess value: "<<guess<<std::endl;
 			icp.align(Final, guess);
 
-	//			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
-	//			icp.getFitnessScore() << std::endl;
+			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
+					icp.getFitnessScore() << std::endl;
 			Matrix4f transformation_matrix = icp.getFinalTransformation();
 	//			std::cout << transformation_matrix << std::endl;
 
-	//			pose = getPose(transformation_matrix.cast <double>());
-			pose = truePose;
+			pose = getPose(transformation_matrix.cast <double>());
+//			pose = truePose;
 			// TODO: Transform scan so it aligns with ego's actual pose and render that scan
-			//pcl::transformPointCloud (*scanCloud, *scanCloud, transformation_matrix);
-
 			pcl::transformPointCloud (*scanCloud, *scanCloud, convert2Eigen(pose));
 
 			viewer->removePointCloud("scan");
