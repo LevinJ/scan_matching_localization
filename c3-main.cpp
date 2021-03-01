@@ -274,12 +274,13 @@ int main(){
 			pcl::IterativeClosestPoint<PointT, PointT> icp;
 			icp.setInputSource(scanCloud);
 			icp.setInputTarget(mapCloud);
+			icp.setMaximumIterations (550);
 
 			pcl::PointCloud<pcl::PointXYZ> Final;
 			Eigen::Matrix4f guess;
 	//			guess = convert2Eigen(pose_lidarRef);
-//				guess = convert2Eigen(pose);
-			guess = convert2Eigen(truePose);
+			guess = convert2Eigen(pose);
+//			guess = convert2Eigen(truePose);
 			icp.align(Final, guess);
 
 			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
@@ -341,9 +342,10 @@ int main(){
 				return 0;
 			}
 		}
-		new_scan = true;
-		std::this_thread::sleep_for(0.2s);
+
+//		std::this_thread::sleep_for(0.2s);
   		viewer->spinOnce ();
+  		new_scan = true;
 
 		
 
