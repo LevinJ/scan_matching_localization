@@ -36,6 +36,7 @@ using namespace std;
 #include <pcl/console/time.h>   // TicToc
 #include <pcl/filters/voxel_grid.h>
 #include <sstream>
+#include <boost/optional/optional_io.hpp>
 
 PointCloudT pclCloud;
 cc::Vehicle::Control control;
@@ -226,6 +227,10 @@ int main(){
 	Pose pose_lidarRef(Point(lidar->GetTransform().location.x, lidar->GetTransform().location.y, lidar->GetTransform().location.z), Rotate(lidar->GetTransform().rotation.yaw * pi/180, lidar->GetTransform().rotation.pitch * pi/180, lidar->GetTransform().rotation.roll * pi/180));
 	double maxError = 0;
 
+	auto settings = world.GetSettings();
+	std::cout<<"settings.fixed_delta_seconds= "<< settings.fixed_delta_seconds <<std::endl;
+	std::cout<<"settings.synchronous_mode= "<< settings.synchronous_mode <<std::endl;
+	std::cout<<"settings.no_rendering_mode= "<< settings.no_rendering_mode <<std::endl;
 	while (!viewer->wasStopped())
   	{
 		while(new_scan){
