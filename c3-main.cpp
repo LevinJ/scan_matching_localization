@@ -266,17 +266,15 @@ int main(){
 			// TODO: Find pose transform by using ICP or NDT matching
 			//pose = ....
 			pcl::IterativeClosestPoint<PointT, PointT> icp;
-			icp.setInputSource(cloudFiltered);
+			icp.setInputSource(scanCloud);
 			icp.setInputTarget(mapCloud);
 
 			pcl::PointCloud<pcl::PointXYZ> Final;
 			Eigen::Matrix4f guess;
 	//			guess = convert2Eigen(pose_lidarRef);
-				guess = convert2Eigen(pose);
-//			guess = convert2Eigen(truePose);
-	//			std::cout<<"guess value: "<<guess<<std::endl;
-				std::cout << "last pose = "<<convert2String(pose) <<", gt pose = "<<convert2String(truePose)<<std::endl;
-				icp.align(Final, guess);
+//				guess = convert2Eigen(pose);
+			guess = convert2Eigen(truePose);
+			icp.align(Final, guess);
 
 			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
 					icp.getFitnessScore() << std::endl;
@@ -285,6 +283,8 @@ int main(){
 
 			pose = getPose(transformation_matrix.cast <double>());
 //			pose = truePose;
+			std::cout << "guess = "<<convert2String(getPose(guess.cast <double>()))<<", pose="<< convert2String(pose) <<
+					", gt pose = "<<convert2String(truePose)<<std::endl;
 			// TODO: Transform scan so it aligns with ego's actual pose and render that scan
 			pcl::transformPointCloud (*scanCloud, *scanCloud, convert2Eigen(pose));
 
@@ -309,7 +309,8 @@ int main(){
 		}
 
 		double poseError = sqrt( (truePose.position.x - pose.position.x) * (truePose.position.x - pose.position.x) + (truePose.position.y - pose.position.y) * (truePose.position.y - pose.position.y) );
-		std::cout << "calculate error"<<std::endl;
+
+
 		if(poseError > maxError)
 			maxError = poseError;
 		double distDriven = sqrt( (truePose.position.x) * (truePose.position.x) + (truePose.position.y) * (truePose.position.y) );
@@ -320,13 +321,18 @@ int main(){
 		viewer->removeShape("dist");
 		viewer->addText("Distance: "+to_string(distDriven)+" m", 200, 200, 32, 1.0, 1.0, 1.0, "dist",0);
 
+		std::cout << "poseError="<< poseError<<",maxError=" <<maxError<<",distDriven=" <<distDriven<<std::endl;
 		if(maxError > 1.2 || distDriven >= 170.0 ){
 			viewer->removeShape("eval");
 			if(maxError > 1.2){
 				viewer->addText("Try Again", 200, 50, 32, 1.0, 0.0, 0.0, "eval",0);
+				std::cout << "Try Again"<<std::endl;
+				return -1;
 			}
 			else{
 				viewer->addText("Passed!", 200, 50, 32, 0.0, 1.0, 0.0, "eval",0);
+				std::cout << "Passed!"<<std::endl;
+				return 0;
 			}
 		}
 		new_scan = true;
