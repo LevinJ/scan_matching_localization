@@ -206,9 +206,10 @@ int main(){
 	typename pcl::PointCloud<PointT>::Ptr scanCloud (new pcl::PointCloud<PointT>);
 
 	lidar->Listen([&new_scan, &lastScanTime, &scanCloud](auto data){
-
+		std::cout<<"before filtering frameid="<<data->GetFrame ()<<",timestamp="<<data->GetTimestamp ()<<std::endl;
 		if(new_scan){
 			auto scan = boost::static_pointer_cast<csd::LidarMeasurement>(data);
+			std::cout<<"frameid="<<scan->GetFrame ()<<",timestamp="<<scan->GetTimestamp ()<<std::endl;
 			for (auto detection : *scan){
 				if((detection.point.x*detection.point.x + detection.point.y*detection.point.y + detection.point.z*detection.point.z) > 8.0){ // Don't include points touching ego
 					pclCloud.points.push_back(PointT(detection.point.x, detection.point.y, detection.point.z));
