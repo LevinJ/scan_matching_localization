@@ -312,6 +312,7 @@ int main(){
 			icp.setInputTarget(mapCloud);
 			icp.setMaximumIterations (15);
 			if(last_icp_score > 0.04){
+				//if we detect that last icp iteration optimizaion is a bit off, increase MaximumIterations
 				std::cout <<"set larger max itermation"<< std::endl;
 				icp.setMaximumIterations (25);
 			}
@@ -320,6 +321,9 @@ int main(){
 			Eigen::Matrix4f guess;
 			auto pred_pose = pose;
 			if(last_sim_time !=-1){
+				//After the first lidar frame, we will use the simple constant velocity motion model to
+				//predict the vehicle position. The motivation behind this step is that icp will have
+				//a better initial value and thus achieve better result.
 				pred_pose.position.x = pose.position.x + dt * vx;
 				pred_pose.position.y = pose.position.y + dt * vy;
 			}

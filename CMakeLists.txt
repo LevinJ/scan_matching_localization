@@ -6,8 +6,8 @@ cmake_minimum_required (VERSION 3.5)
 
 # -g allows for gdb debugging
 # turn on -03 for best performance
-#add_definitions(-std=c++14 -O3)
-add_definitions(-std=c++14 -O0 -g)
+add_definitions(-std=c++14 -O3)
+#add_definitions(-std=c++14 -O0 -g)
 
 set(CXX_FLAGS "-pthread -fPIC -DNDEBUG -Wextra")
 set(CMAKE_CXX_FLAGS "${CXX_FLAGS} -Wl,-Bstatic -lboost_filesystem -Wl,-Bdynamic")
