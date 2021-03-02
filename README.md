@@ -2,7 +2,7 @@
 # SDCND : Scan Matching Localization
 
 
-In this project, we localize a car driving in carla simulation using lidar scan matching.
+In this project, we localize a car driving in Carla simulation using lidar scan matching.
 
 
 To run the project, simply run the script `run-carla.sh` to start the carla simulation server, and then, in a new terminal,  run command ./build/cloud_loc.
@@ -96,7 +96,7 @@ As requried by project rubric, the vehicle ground truth pose is only used at the
 
 ## Reflection
 
-Using lidar to localize a vehicle is a fun project to work on. There are a few points, in hindsight, worth point out.
+Using lidar to localize a vehicle is a fun project to work on. There are a few points, in hindsight, worth pointing out.
 
 1. Setting up Carla on my local computer and make sure that it behaves the same as Udacity workplace takes a bit time, as I am not sure if any custom commands has been run on Udacity workspace to change default Carla server configurations.  
 2. I think the Udacity starter code may have a small bug, in that it calcuates pose error before applying scan matching. As a result, we are comparing ground truth pose with last scan matching estimation, instead of current scan matching estimation.  
