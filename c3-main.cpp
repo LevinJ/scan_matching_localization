@@ -38,6 +38,24 @@ using namespace std;
 #include <sstream>
 #include <boost/optional/optional_io.hpp>
 
+#include <iostream>
+#include <chrono>
+
+class Timer
+{
+public:
+    Timer() : beg_(clock_::now()) {}
+    void reset() { beg_ = clock_::now(); }
+    double elapsed() const {
+        return std::chrono::duration_cast<second_>
+            (clock_::now() - beg_).count(); }
+
+private:
+    typedef std::chrono::high_resolution_clock clock_;
+    typedef std::chrono::duration<double, std::ratio<1> > second_;
+    std::chrono::time_point<clock_> beg_;
+};
+
 PointCloudT pclCloud;
 cc::Vehicle::Control control;
 std::chrono::time_point<std::chrono::system_clock> currentTime;
@@ -205,11 +223,14 @@ int main(){
 	typename pcl::PointCloud<PointT>::Ptr cloudFiltered (new pcl::PointCloud<PointT>);
 	typename pcl::PointCloud<PointT>::Ptr scanCloud (new pcl::PointCloud<PointT>);
 
-	lidar->Listen([&new_scan, &lastScanTime, &scanCloud](auto data){
-		std::cout<<"before filtering frameid="<<data->GetFrame ()<<",timestamp="<<data->GetTimestamp ()<<std::endl;
+	double cur_sim_time = -1;
+	double last_sim_time = -1;
+	double dt = -1;
+	lidar->Listen([&cur_sim_time, &last_sim_time, &new_scan, &lastScanTime, &scanCloud](auto data){
+//		std::cout<<"before filtering frameid="<<data->GetFrame ()<<",timestamp="<<data->GetTimestamp ()<<std::endl;
 		if(new_scan){
 			auto scan = boost::static_pointer_cast<csd::LidarMeasurement>(data);
-			std::cout<<"frameid="<<scan->GetFrame ()<<",timestamp="<<scan->GetTimestamp ()<<std::endl;
+
 			for (auto detection : *scan){
 				if((detection.point.x*detection.point.x + detection.point.y*detection.point.y + detection.point.z*detection.point.z) > 8.0){ // Don't include points touching ego
 					pclCloud.points.push_back(PointT(detection.point.x, detection.point.y, detection.point.z));
@@ -219,7 +240,14 @@ int main(){
 				lastScanTime = std::chrono::system_clock::now();
 				*scanCloud = pclCloud;
 				new_scan = false;
-				std::cout << "lidar callback"<<std::endl;
+//				std::cout<<"frameid="<<scan->GetFrame ()<<",timestamp="<<scan->GetTimestamp ()<<std::endl;
+				if(cur_sim_time == -1){
+					cur_sim_time = scan->GetTimestamp ();
+				}else{
+					last_sim_time = cur_sim_time;
+					cur_sim_time = scan->GetTimestamp ();
+				}
+//				std::cout << "lidar callback"<<std::endl;
 			}
 		}
 	});
@@ -232,6 +260,12 @@ int main(){
 	std::cout<<"settings.fixed_delta_seconds= "<< settings.fixed_delta_seconds <<std::endl;
 	std::cout<<"settings.synchronous_mode= "<< settings.synchronous_mode <<std::endl;
 	std::cout<<"settings.no_rendering_mode= "<< settings.no_rendering_mode <<std::endl;
+
+	Pose last_pose;
+	last_pose.position.x = -100;
+	double vx = 0;
+	double vy = 0;
+	double last_icp_score = -1;
 	while (!viewer->wasStopped())
   	{
 		while(new_scan){
@@ -256,42 +290,53 @@ int main(){
 
 
 		if(!new_scan){
-//			std::cout << "process scan"<<std::endl;
+			if(last_sim_time !=-1){
+				dt = cur_sim_time -last_sim_time;
+			}
 
 			// TODO: (Filter scan using voxel filter)
-	//			cout<<"before filtering size ="<<scanCloud->points.size()<<endl;
+			Timer tmr;
 			pcl::VoxelGrid<PointT> sor;
 			sor.setInputCloud (scanCloud);
-			sor.setLeafSize (0.05f, 0.05f, 0.05f);
+			sor.setLeafSize (0.2f, 0.2f, 0.2f);
 			sor.filter (*cloudFiltered);
-	//			cout<<"after filtering size ="<<cloudFiltered->points.size()<<endl;
-	//			cout<<"mapCloud size="<<mapCloud->width<<endl;
+			std::cout <<"filtering time="<< tmr.elapsed() << std::endl;
+			cout<<"before/after filtering size ="<<scanCloud->points.size()<<", "<<cloudFiltered->points.size()<<endl;
 
-			pcl::io::savePCDFileASCII ("cloudFiltered_pcd.pcd", *cloudFiltered);
 
 			// TODO: Find pose transform by using ICP or NDT matching
 			//pose = ....
+			tmr.reset();
 			pcl::IterativeClosestPoint<PointT, PointT> icp;
-			icp.setInputSource(scanCloud);
+			icp.setInputSource(cloudFiltered);
 			icp.setInputTarget(mapCloud);
-			icp.setMaximumIterations (550);
+			icp.setMaximumIterations (15);
+			if(last_icp_score > 0.04){
+				std::cout <<"set larger max itermation"<< std::endl;
+				icp.setMaximumIterations (25);
+			}
 
 			pcl::PointCloud<pcl::PointXYZ> Final;
 			Eigen::Matrix4f guess;
-	//			guess = convert2Eigen(pose_lidarRef);
-			guess = convert2Eigen(pose);
-//			guess = convert2Eigen(truePose);
+			auto pred_pose = pose;
+			if(last_sim_time !=-1){
+				pred_pose.position.x = pose.position.x + dt * vx;
+				pred_pose.position.y = pose.position.y + dt * vy;
+			}
+			guess = convert2Eigen(pred_pose);
+
 			icp.align(Final, guess);
-
-			std::cout << "has converged:" << icp.hasConverged() << " score: " <<
-					icp.getFitnessScore() << std::endl;
+			std::cout <<"icp time="<< tmr.elapsed() << std::endl;
+			last_icp_score = icp.getFitnessScore();
+			std::cout << "has converged:" << icp.hasConverged() << " score: " << last_icp_score<< std::endl;
 			Matrix4f transformation_matrix = icp.getFinalTransformation();
-	//			std::cout << transformation_matrix << std::endl;
-
 			pose = getPose(transformation_matrix.cast <double>());
-//			pose = truePose;
+
+
+
 			std::cout << "guess = "<<convert2String(getPose(guess.cast <double>()))<<", pose="<< convert2String(pose) <<
-					", gt pose = "<<convert2String(truePose)<<std::endl;
+								", gt pose = "<<convert2String(truePose)<<std::endl;
+
 			// TODO: Transform scan so it aligns with ego's actual pose and render that scan
 			pcl::transformPointCloud (*scanCloud, *scanCloud, convert2Eigen(pose));
 
@@ -329,21 +374,38 @@ int main(){
 		viewer->addText("Distance: "+to_string(distDriven)+" m", 200, 200, 32, 1.0, 1.0, 1.0, "dist",0);
 
 		std::cout << "poseError="<< poseError<<",maxError=" <<maxError<<",distDriven=" <<distDriven<<std::endl;
+		if(last_pose.position.x == -100){
+			last_pose = pose;
+		}else{
+			double dist_x = pose.position.x - last_pose.position.x;
+			double dist_y = pose.position.y - last_pose.position.y;
+			double dist_gap = sqrt( dist_x * dist_x + dist_y * dist_y);
+			double v = 0;
+			if(dt !=-1){
+				vx = dist_x/dt;
+				vy = dist_y/dt;
+				v = dist_gap /dt;
+			}
+			RowVectorXd vec_gt(7);
+			vec_gt <<dt, dist_gap, dist_x,dist_y,v,vx,vy;
+
+			std::cout << "ground truth info="<< vec_gt<<std::endl;
+			last_pose = pose;
+		}
 		if(maxError > 1.2 || distDriven >= 170.0 ){
 			viewer->removeShape("eval");
 			if(maxError > 1.2){
 				viewer->addText("Try Again", 200, 50, 32, 1.0, 0.0, 0.0, "eval",0);
 				std::cout << "Try Again"<<std::endl;
-				return -1;
+//				return -1;
 			}
 			else{
 				viewer->addText("Passed!", 200, 50, 32, 0.0, 1.0, 0.0, "eval",0);
 				std::cout << "Passed!"<<std::endl;
-				return 0;
+//				return 0;
 			}
 		}
 
-//		std::this_thread::sleep_for(0.2s);
   		viewer->spinOnce ();
   		new_scan = true;
 
