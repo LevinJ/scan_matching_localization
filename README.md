@@ -102,7 +102,7 @@ Using lidar to localize a vehicle is a fun project to work on. There are a few p
 2. I think the Udacity starter code may have a small bug, in that it calcuates pose error before applying scan matching. As a result, we are comparing ground truth pose with last scan matching estimation, instead of current scan matching estimation.  
 3. The implicit coordinate frame transformation is a bit confusing. Normally lidar scan matching will help us get the lidar pose relative to map, and an additonal lidar to vehicle transfrom needs to be applied to get vehicle pose, but currently vehicle pose is obtained right after scan matching. As a result, I assume some coordiante frame has already been applied to the map cloud extracted from Carla. As this is not explictly pointed out in project instruction, it takes me qutie a while to figure out.  
 
-4. The 1 meter max pose error is a bit larger than I expected, I am not sure if this has anything to the point 3 mentioned above.  
+4. The 1 meter max pose error is a bit larger than I expected, maybe relevant filtering and ICP parameters can be further fine tuned.  
 
 
 
