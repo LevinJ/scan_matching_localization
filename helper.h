@@ -55,6 +55,12 @@ struct Pose{
         Pose result(Point(position.x-p.position.x, position.y-p.position.y, position.z-p.position.z), Rotate(rotation.yaw-p.rotation.yaw, rotation.pitch-p.rotation.pitch, rotation.roll-p.rotation.roll) );
         return result;
     }
+
+	Pose operator+(const Pose& p)
+	{
+		Pose result(Point(position.x+p.position.x, position.y+p.position.y, position.z+p.position.z), Rotate(rotation.yaw+p.rotation.yaw, rotation.pitch+p.rotation.pitch, rotation.roll+ p.rotation.roll) );
+		return result;
+	}
 };
 
 struct ControlState{

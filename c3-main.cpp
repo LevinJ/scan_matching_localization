@@ -214,6 +214,8 @@ int main(){
 	auto vehicle = boost::static_pointer_cast<cc::Vehicle>(ego_actor);
 	Pose pose(Point(0,0,0), Rotate(0,0,0));
 
+	Pose prevpose = pose;
+
 	// Load map
 	PointCloudT::Ptr mapCloud(new PointCloudT);
   	pcl::io::loadPCDFile("map.pcd", *mapCloud);
@@ -298,7 +300,7 @@ int main(){
 			Timer tmr;
 			pcl::VoxelGrid<PointT> sor;
 			sor.setInputCloud (scanCloud);
-			sor.setLeafSize (0.2f, 0.2f, 0.2f);
+			sor.setLeafSize (0.7f, 0.7f, 0.7f);
 			sor.filter (*cloudFiltered);
 			std::cout <<"filtering time="<< tmr.elapsed() << std::endl;
 			cout<<"before/after filtering size ="<<scanCloud->points.size()<<", "<<cloudFiltered->points.size()<<endl;
@@ -310,7 +312,7 @@ int main(){
 			pcl::IterativeClosestPoint<PointT, PointT> icp;
 			icp.setInputSource(cloudFiltered);
 			icp.setInputTarget(mapCloud);
-			icp.setMaximumIterations (15);
+			icp.setMaximumIterations (10);
 			if(last_icp_score > 0.04){
 				//if we detect that last icp iteration optimizaion is a bit off, increase MaximumIterations
 				std::cout <<"set larger max itermation"<< std::endl;
@@ -328,13 +330,14 @@ int main(){
 				pred_pose.position.y = pose.position.y + dt * vy;
 			}
 			guess = convert2Eigen(pred_pose);
-
-			icp.align(Final, guess);
+			icp.align(Final, convert2Eigen(pose + pose - prevpose));
 			std::cout <<"icp time="<< tmr.elapsed() << std::endl;
 			last_icp_score = icp.getFitnessScore();
 			std::cout << "has converged:" << icp.hasConverged() << " score: " << last_icp_score<< std::endl;
 			Matrix4f transformation_matrix = icp.getFinalTransformation();
+			prevpose = pose;
 			pose = getPose(transformation_matrix.cast <double>());
+
 
 
 
